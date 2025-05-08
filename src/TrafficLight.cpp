@@ -3,6 +3,7 @@
 #include "TrafficLight.h"
 #include <chrono>
 #include <thread>
+#include <mutex>
 
 /* Implementation of class "MessageQueue" */
 
@@ -13,10 +14,10 @@ T MessageQueue<T>::receive()
     // FP.5a : The method receive should use std::unique_lock<std::mutex> and _condition.wait() 
     // to wait for and receive new messages and pull them from the queue using move semantics. 
     // The received object should then be returned by the receive function. 
-    std::unique<std::mutex> unique_(_mutex);
+    std::unique_lock<std::mutex> unique_(_mutex);
     // unlock in wait if  received wake signal and queue not empty it will lock and complete the function 
     _condition.wait( unique_ , [this](){
-         return !_queue.empty()});
+         return !_queue.empty();});
     
     T recieved_value = std::move(_queue.back());
 
@@ -34,7 +35,7 @@ void MessageQueue<T>::send(T &&msg)
     // as well as _condition.notify_one() to add a new message to the queue and afterwards send a notification.
 
     std::lock_guard<std::mutex> _lockGuard (_mutex);
-    _queue.emblace_back(std::move(msg));
+    _queue.emplace_back(std::move(msg));
     _condition.notify_one();
 }
 
@@ -71,7 +72,7 @@ TrafficLightPhase TrafficLight::getCurrentPhase()
 void TrafficLight::simulate()
 {
     // FP.2b : Finally, the private method „cycleThroughPhases“ should be started in a thread when the public method „simulate“ is called. To do this, use the thread queue in the base class. 
-    threads.emplace_back(std::thread(&cycleThroughPhases, this ));
+    threads.emplace_back(std::thread(&TrafficLight::cycleThroughPhases, this ));
 }
 
 // virtual function which is executed in a thread
